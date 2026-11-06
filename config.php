@@ -31,7 +31,7 @@ function schema(PDO $pdo): array {
     $st->execute([$dbname, $table]);
     $cols = $st->fetchAll();
     $want = ['id' => ['productid', 'id'], 'name' => ['productname', 'name'], 'price' => ['unitprice', 'price'],
-             'stock' => ['unitsinstock', 'stock'], 'unit' => ['quantityperunit']];
+             'stock' => ['unitsinstock', 'stock'], 'unit' => ['quantityperunit', 'unit']];
     $map = [];
     foreach ($want as $k => $cands) {
         foreach ($cols as $c) if (in_array($normC($c['cname']), $cands, true)) { $map[$k] = $c['cname']; break; }
