@@ -15,13 +15,15 @@ function db(): PDO {
     return $pdo;
 }
 
-// ตรวจหาตาราง products และชื่อคอลัมน์อัตโนมัติ (ไม่สนตัวพิมพ์เล็ก/ใหญ่ หรือ underscore)
+// ตรวจหาตาราง products และชื่อคอลัมน์อัตโนมัติ
+// รองรับชื่อแบบ tb_products และคอลัมน์แบบ i_ProductID, c_ProductName
 function schema(PDO $pdo): array {
     $dbname = $pdo->query('SELECT DATABASE()')->fetchColumn();
-    $norm = fn($s) => strtolower(str_replace('_', '', $s));
+    $normT = fn($s) => preg_replace('/^tb/', '', strtolower(str_replace('_', '', $s)));
+    $normC = fn($s) => strtolower(str_replace('_', '', preg_replace('/^[a-z]{1,2}_/i', '', $s)));
     $table = null;
     foreach ($pdo->query("SELECT TABLE_NAME AS t FROM information_schema.TABLES WHERE TABLE_SCHEMA=" . $pdo->quote($dbname)) as $r) {
-        if ($norm($r['t']) === 'products') { $table = $r['t']; break; }
+        if ($normT($r['t']) === 'products') { $table = $r['t']; break; }
     }
     if (!$table) throw new RuntimeException('ไม่พบตาราง products (ยังไม่ได้ import dbNorthwind.sql?)');
     $st = $pdo->prepare("SELECT COLUMN_NAME AS cname, IS_NULLABLE AS nullable, COLUMN_DEFAULT AS def, EXTRA AS extra, DATA_TYPE AS dtype, COLUMN_KEY AS ckey
@@ -32,7 +34,7 @@ function schema(PDO $pdo): array {
              'stock' => ['unitsinstock', 'stock'], 'unit' => ['quantityperunit']];
     $map = [];
     foreach ($want as $k => $cands) {
-        foreach ($cols as $c) if (in_array($norm($c['cname']), $cands, true)) { $map[$k] = $c['cname']; break; }
+        foreach ($cols as $c) if (in_array($normC($c['cname']), $cands, true)) { $map[$k] = $c['cname']; break; }
     }
     if (empty($map['id'])) foreach ($cols as $c) if ($c['ckey'] === 'PRI') { $map['id'] = $c['cname']; break; }
     foreach (['id', 'name'] as $must) if (empty($map[$must])) throw new RuntimeException("ไม่พบคอลัมน์ $must ในตาราง $table");
